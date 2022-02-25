@@ -1,0 +1,351 @@
+<html>
+  <head>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet"/>
+    <style>
+      html,
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .main-container {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 70% 1fr;
+        grid-row-gap: 0.5em;
+        grid-column-gap: 0;
+        column-gap: 1em;
+      }
+      .container-left {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-row-gap: 0.5em;
+        grid-column-gap: 1em;
+        padding: 0.5em;
+        border: 1px solid;
+        border-right: none;
+      }
+
+      .container-left .item {
+        aspect-ratio: 1;
+        border-radius: 30px;
+        position: relative;
+        background-color: #ddd;
+      }
+
+      .container-right {
+        padding: 1em;
+        border: 1px solid;
+        position: relative;
+      }
+
+      .circle {
+        border: 1px solid white;
+        border-radius: 50%;
+        background-color: white;
+      }
+
+      .center {
+        position: absolute;
+        width: 51%;
+        height: 50%;
+        left: 50%;
+        top: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+      }
+
+      .play {
+        border: 1px solid #9af;
+        text-align: center;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 106px;
+        margin: 0 auto;
+        background-color: #9af;
+        padding: 3%;
+      }
+
+      .play button {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: white;
+        font-family: inherit;
+      }
+
+      .counter {
+        border: 1px solid #9af;
+        text-align: center;
+        border-radius: 50%;
+        height: 150px;
+        width: 150px;
+        margin: 0 auto;
+        font-size: 6em;
+        background-color: #9af;
+        font-family: inherit;
+        color: white;
+      }
+
+      .name {
+        position: absolute;
+        color: #fff;
+        font-weight: bold;
+        text-transform: uppercase;
+        bottom: -35px;
+        text-align: center;
+        width: 100%;
+      }
+
+      .icon {
+        left: 50%;
+        position: absolute;
+        top: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+      }
+
+       .counter-dial .counter{
+      	display: none;
+      }
+
+      .tick {
+        width: 25px;
+        height: 25px;
+        margin: 10px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: none;
+      }
+
+      .tick-1 {
+        background-color: #98fb98;
+        float: left;
+      }
+
+      .tick-2 {
+        float: right;
+        background-color: #e97451;
+      }
+
+      .bg-black {
+        background-color: black !important;
+      }
+
+      .bg-black > .tick{
+      	display: block;
+      }
+
+      .option {
+        color: #fff;
+        float: right;
+        margin: 15px;
+        display: none;
+      }
+
+      .option .fa {
+        font-size: 23px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div id="app" class="container-left"></div>
+      <div id="app" class="container-right">
+        <div class="play start"><button class="">Play</button></div>
+
+        <div class="counter-dial">
+          <div class="counter center">3</div>
+
+          <div class="chart">
+            <canvas id="myChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <template id="item_template">
+      <div data-color="" class="item">
+        <div class="option"></div>
+        <div data-color="#98fb98" class="tick tick-1"></div>
+        <div data-color="#e97451" class="tick tick-2"></div>
+        <div class="circle center">
+          <i class="icon fa fa-3x"></i>
+          <span class="name"></span>
+        </div>
+      </div>
+    </template>
+
+    
+    <script src="lodash.min.js"></script>
+    <script src="chart.js"></script>
+    <script>
+      const colors = ["#e97451", "#98fb98"];
+
+      let dataList;
+
+      // https://mocki.io/v1/4f686cee-0b27-4bdf-b060-0e4dddb15f79
+      fetch("https://dilna.free.beeceptor.com/")
+        .then((response) => response.json())
+        .then((json) => (dataList = json));
+
+      let ctx = document.getElementById("myChart");
+      let myChart;
+
+      const chartData = {
+        labels: ["Correct", "Wrong", "Unanswered"],
+        datasets: [
+          {
+            data: [0, 0, 15],
+            label: "Score",
+            backgroundColor: [
+              "rgba(153, 102, 255, 0.2)",
+              "rgba(153, 102, 255, 0.2)",
+              "rgba(153, 102, 255, 0.2)",
+            ],
+            borderColor: [
+              "rgb(153, 102, 255)",
+              "rgb(153, 102, 255)",
+              "rgb(153, 102, 255)",
+            ],
+            borderWidth: 1,
+          },
+        ],
+      };
+      const chartConfig = {
+        type: "bar",
+        data: chartData,
+        options: {
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      };
+
+      function addItem(container, template, data) {
+        let clone = template.content.cloneNode(true);
+        if(data){
+	        let item_color = clone.querySelectorAll(".item")[0];
+	        item_color.dataset.color = data.color;
+	        item_color.style.backgroundColor = data.color;
+
+	        let icon = clone.querySelectorAll(".circle .icon")[0];
+	        icon.classList.add(data.icon);
+
+	        let name = clone.querySelectorAll(".circle .name")[0];
+	        name.textContent = data.name;
+		}
+        container.appendChild(clone);
+      }
+
+      	const tmpl = document.querySelector("#item_template");
+      	const container = document.getElementById("app");
+
+      	const generateData = () => {
+	        document.getElementById("app").innerText = "";
+	        const container = document.getElementById("app");
+	        let shuffledData = _.shuffle(dataList);
+	        shuffledData = _.take(shuffledData, 15);
+
+	        shuffledData = _.map(shuffledData, (d, i) => {
+	          d["color"] = colors[_.random(0, 1)];
+	          d["icon"] = d.type === "country" ? "fa-flag" : "fa-building";
+	          return d;
+	        });
+
+	        shuffledData.forEach(data => addItem(container, tmpl, data));
+
+	        return shuffledData;
+     	}
+
+      for (let i = 0; i < 15; i++) {
+        addItem(container, tmpl, null);
+      }
+
+      let hasCounterStarted = false;
+
+      const startBtn = document.querySelector(".start");
+      startBtn.addEventListener("click", startHandler);
+
+       let c = 0,
+        w = 0,
+        u = 15;
+
+      function startHandler() {
+        let data = generateData();
+        c = 0,
+        w = 0,
+        u = 15;
+
+        const chart = document.querySelector("#myChart");
+        const counterDial = document.querySelector(".counter-dial .counter");
+       
+        chart.style.display = 'none';
+        counterDial.style.display = 'block';
+        counterDial.textContent="3";
+        
+        counter = 2;
+        let timer = setInterval(() => {
+          if (counter == 1) {
+            clearInterval(timer);
+            hasCounterStarted = false;
+
+            document.getElementById("app").innerText = "";
+            shuffledData = _.shuffle(data);
+            shuffledData.forEach(data => addItem(container, tmpl, data));
+
+            const item = document.querySelectorAll(".item");
+
+			item.forEach(e => e.classList.add("bg-black"));
+
+            chart.style.display = 'block';
+            
+            myChart = new Chart(ctx, chartConfig);
+            counterDial.style.display = 'none';
+            counterDial.textContent="3";
+            updateChartData(0, 0, 15);
+          }
+           counterDial.textContent=counter;
+          
+          --counter;
+          hasCounterStarted = true;
+        }, 1000);
+      };
+     
+
+        document.getElementById("app").addEventListener('click', (event) =>{
+
+		  if(event.target.className.includes("tick")) {
+		    let currEl = event.target;
+		    let parentEl = currEl.parentElement;
+		    parentEl.classList.remove("bg-black");
+		    parentEl.style.backgroundColor = parentEl.dataset.color;
+        	
+        	parentEl.querySelectorAll(".tick").forEach(e => e.remove());
+        	parentEl.querySelector(".option").style.display='block';
+	        if (currEl.dataset.color === parentEl.dataset.color) {
+	          parentEl.querySelector(".option").innerHTML = '<i class="fa-check fa"></i>';
+	          c++;
+	        } else {
+	          parentEl.querySelector(".option").innerHTML ='<i class="fa-times fa"></i>';
+	          w++;
+	        }
+	        u--;
+	        updateChartData(c, w, u);
+		  };
+		});
+
+      const updateChartData = (c, w, u) => {
+        myChart.data.datasets[0].data = [c, w, u];
+        myChart.update();
+      };
+    </script>
+  </body>
+</html>
